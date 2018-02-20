@@ -119,7 +119,9 @@ int sudoku_filterout_cell(int sudoku[][9], int row, int col, struct sudoku_cell_
 			}
 		}
 	}
-	printf("%d is solved.\n",solved);
+
+	if (solved)
+		printf("%d is solved.\n",solved);
 
 	return solved;
 }
@@ -127,6 +129,7 @@ int sudoku_filterout_cell(int sudoku[][9], int row, int col, struct sudoku_cell_
 int sudoku_solve(int sudoku[][9], struct sudoku_cell_t *step, int solved)
 {
 	int s = 0;
+	int t = 0;
 
 	for (s=0; s < solved && solved<81; s++) {
 		int i = step[s].row;
@@ -134,9 +137,11 @@ int sudoku_solve(int sudoku[][9], struct sudoku_cell_t *step, int solved)
 		if (NOT_SOLVED(sudoku[i][j])) {
 			printf(" ******* Error [%d][%d] = 0x%.3x ******\n",i+1,j+1,sudoku[i][j]);
 		}
-		printf("step %2d: checking [%d][%d]=%d relative cells\n", s, i+1, j+1, sudoku[i][j]);
 
-		solved += sudoku_filterout_cell(sudoku, i, j, &step[solved]);
+		t = sudoku_filterout_cell(sudoku, i, j, &step[solved]);
+		solved += t;
+		if (t)
+			printf("step %2d: checked [%d][%d]=%d relative cells\n", s, i+1, j+1, sudoku[i][j]);
 //		sudoku_print(sudoku);
 	}
 
