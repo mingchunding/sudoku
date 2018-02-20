@@ -32,39 +32,39 @@ int show_sudoku(int v[][9])
 	int i, j, m, n;
 
 	printf("=========================================================================\n");
-	for (i=0; i<9; i++) {
-		for (m=0; m<3; m++) {
-			printf("|");
-			for (j=0; j<9; j++)
-			{
-				int t = v[i][j];
-				int c = 0;
-				if (!t || NOT_READY(t)) {
-					//printf(" 0");
-				//	continue;
-				} else for (c=0; !(t&1); c++) {
-					t >>= 1;
-				}
-
-				if (c) {
-					printf(" %d %d %d",c,c,c);
-				} else for (n=0; n<3; n++) {
-					c = m*3+n+1;
-					if (t & (1<<c))
-						printf(" %d",c);
-					else
-						printf("  ");
-				}
-				if (j%3==2)
-					printf(" |");
-				else
-					printf(" |");
+	for (i=0; i<9*3; i++) {
+		m = i % 3;
+		printf("|");
+		for (j=0; j<9; j++)
+		{
+			int t = v[i/3][j];
+			int c = 0;
+			if (!t || NOT_READY(t)) {
+				//printf(" 0");
+			//	continue;
+			} else for (c=0; !(t&1); c++) {
+				t >>= 1;
 			}
-			printf("\n");
+
+			if (c) {
+				printf(" %d %d %d",c,c,c);
+				//printf(" \e[5;32m%d %d %d\e[m",c,c,c);
+			} else for (n=0; n<3; n++) {
+				c = m*3+n+1;
+				if (t & (1<<c))
+					printf(" \e[1;31m%d\e[m",c);
+				else
+					printf("  ");
+			}
+			if (j%3==2)
+				printf(" |");
+			else
+				printf(" |");
 		}
-		if (i%3==2)
+		printf("\n");
+		if (i%9==8)
 			printf("=========================================================================\n");
-		else
+		else if (i%3==2)
 			printf("-------------------------------------------------------------------------\n");
 	}
 	printf("\n");	
@@ -109,15 +109,16 @@ int main(int argc, char *argv[])
 	//	printf("argv[%d]=%s\n", i, argv[i]);
 
 	sudoku_solving = init((int*)v, sudoku_solve);
+	show_sudoku(v);
 	printf("%d is solved\n", sudoku_solving);
 
 	for (sudoku_solved=0; sudoku_solved < sudoku_solving; sudoku_solved++) {
 		i = sudoku_solve[sudoku_solved].row;
 		j = sudoku_solve[sudoku_solved].col;
-		printf("step %2d: checking [%d][%d]=%d relative cells\n", sudoku_solved, i+1, j+1, v[i][j]);
+	//	printf("step %2d: checking [%d][%d]=%d relative cells\n", sudoku_solved, i+1, j+1, v[i][j]);
 	}
 
-	for (sudoku_solved=0; sudoku_solved < sudoku_solving; sudoku_solved++) {
+	for (sudoku_solved=0; sudoku_solved < sudoku_solving && sudoku_solving<81; sudoku_solved++) {
 		done = 0;
 		i = sudoku_solve[sudoku_solved].row;
 		j = sudoku_solve[sudoku_solved].col;
