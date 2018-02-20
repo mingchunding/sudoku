@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NOT_READY(x) (x&(x-1))
+#define NOT_SOLVED(x) (x&(x-1))
 #define DBG_PRINT(i,j) 
 //printf("Calculate [%d][%d] = 0x%.3x\n",i+1,j+1,v[i][j])
 
@@ -39,7 +39,7 @@ int show_sudoku(int v[][9])
 		{
 			int t = v[i/3][j];
 			int c = 0;
-			if (!t || NOT_READY(t)) {
+			if (!t || NOT_SOLVED(t)) {
 				//printf(" 0");
 			//	continue;
 			} else for (c=0; !(t&1); c++) {
@@ -122,15 +122,15 @@ int main(int argc, char *argv[])
 		done = 0;
 		i = sudoku_solve[sudoku_solved].row;
 		j = sudoku_solve[sudoku_solved].col;
-		if (NOT_READY(v[i][j])) {
+		if (NOT_SOLVED(v[i][j])) {
 			printf(" ******* Error [%d][%d] = 0x%.3x ******\n",i+1,j+1,v[i][j]);
 		}
 		printf("step %2d: checking [%d][%d]=%d relative cells\n", sudoku_solved, i+1, j+1, v[i][j]);
 		for (k=0; k<9; k++) {
-			if (k==j || !NOT_READY(v[i][k])) continue;
+			if (k==j || !NOT_SOLVED(v[i][k])) continue;
 			v[i][k] &= ~v[i][j];
 			DBG_PRINT(i,k);
-			if (!NOT_READY(v[i][k])) {
+			if (!NOT_SOLVED(v[i][k])) {
 				done++;
 				sudoku_solve[sudoku_solving].row = i;
 				sudoku_solve[sudoku_solving++].col = k;
@@ -138,10 +138,10 @@ int main(int argc, char *argv[])
 
 		}
 		for (k=0; k<9; k++) {
-			if (k==i || !NOT_READY(v[k][j])) continue;
+			if (k==i || !NOT_SOLVED(v[k][j])) continue;
 			v[k][j] &= ~v[i][j];
 			DBG_PRINT(k,j);
-			if (!NOT_READY(v[k][j])) {
+			if (!NOT_SOLVED(v[k][j])) {
 				done++;
 				sudoku_solve[sudoku_solving].row = k;
 				sudoku_solve[sudoku_solving++].col = j;
@@ -150,10 +150,10 @@ int main(int argc, char *argv[])
 		for (m=(i-i%3); m<(i-i%3+3); m++) {
 			if (m==i) continue;
 			for (n=(j-j%3); n<(j-j%3+3); n++) {
-				if (n==j || !NOT_READY(v[m][n])) continue;
+				if (n==j || !NOT_SOLVED(v[m][n])) continue;
 				v[m][n] &= ~v[i][j];
 				DBG_PRINT(m,n);
-				if (!NOT_READY(v[m][n])) {
+				if (!NOT_SOLVED(v[m][n])) {
 					done++;
 					sudoku_solve[sudoku_solving].row = m;
 					sudoku_solve[sudoku_solving++].col = n;
