@@ -74,58 +74,66 @@ int sudoku_print(int v[][9])
 	return 0;
 }
 
-int sudoku_solve(int v[][9], struct sudoku_cell_t *step, int sudoku_solving)
+int sudoku_filterout_solved(int v[][9], int row, int col, struct sudoku_cell_t *step)
 {
 	int i,j,k,m,n;
-	int sudoku_solved = 0;
-	int done = 1;
+	int solved = 0;
 
-	for (sudoku_solved=0; sudoku_solved < sudoku_solving && sudoku_solving<81; sudoku_solved++) {
-		done = 0;
-		i = step[sudoku_solved].row;
-		j = step[sudoku_solved].col;
+	i = row;
+	j = col;
+	for (k=0; k<9; k++) {
+		if (k==j || !NOT_SOLVED(v[i][k])) continue;
+		v[i][k] &= ~v[i][j];
+		DBG_PRINT(i,k);
+		if (!NOT_SOLVED(v[i][k])) {
+			step[solved].row = i;
+			step[solved++].col = k;
+		}
+
+	}
+	for (k=0; k<9; k++) {
+		if (k==i || !NOT_SOLVED(v[k][j])) continue;
+		v[k][j] &= ~v[i][j];
+		DBG_PRINT(k,j);
+		if (!NOT_SOLVED(v[k][j])) {
+			step[solved].row = k;
+			step[solved++].col = j;
+		}
+	}
+	for (m=(i-i%3); m<(i-i%3+3); m++) {
+		if (m==i) continue;
+		for (n=(j-j%3); n<(j-j%3+3); n++) {
+			if (n==j || !NOT_SOLVED(v[m][n])) continue;
+			v[m][n] &= ~v[i][j];
+			DBG_PRINT(m,n);
+			if (!NOT_SOLVED(v[m][n])) {
+				step[solved].row = m;
+				step[solved++].col = n;
+			}
+		}
+	}
+	printf("%d is solved.\n",solved);
+
+	return solved;
+}
+
+int sudoku_solve(int v[][9], struct sudoku_cell_t *step, int solved)
+{
+	int s = 0;
+
+	for (s=0; s < solved && solved<81; s++) {
+		int i = step[s].row;
+		int j = step[s].col;
 		if (NOT_SOLVED(v[i][j])) {
 			printf(" ******* Error [%d][%d] = 0x%.3x ******\n",i+1,j+1,v[i][j]);
 		}
-		printf("step %2d: checking [%d][%d]=%d relative cells\n", sudoku_solved, i+1, j+1, v[i][j]);
-		for (k=0; k<9; k++) {
-			if (k==j || !NOT_SOLVED(v[i][k])) continue;
-			v[i][k] &= ~v[i][j];
-			DBG_PRINT(i,k);
-			if (!NOT_SOLVED(v[i][k])) {
-				done++;
-				step[sudoku_solving].row = i;
-				step[sudoku_solving++].col = k;
-			}
+		printf("step %2d: checking [%d][%d]=%d relative cells\n", s, i+1, j+1, v[i][j]);
 
-		}
-		for (k=0; k<9; k++) {
-			if (k==i || !NOT_SOLVED(v[k][j])) continue;
-			v[k][j] &= ~v[i][j];
-			DBG_PRINT(k,j);
-			if (!NOT_SOLVED(v[k][j])) {
-				done++;
-				step[sudoku_solving].row = k;
-				step[sudoku_solving++].col = j;
-			}
-		}
-		for (m=(i-i%3); m<(i-i%3+3); m++) {
-			if (m==i) continue;
-			for (n=(j-j%3); n<(j-j%3+3); n++) {
-				if (n==j || !NOT_SOLVED(v[m][n])) continue;
-				v[m][n] &= ~v[i][j];
-				DBG_PRINT(m,n);
-				if (!NOT_SOLVED(v[m][n])) {
-					done++;
-					step[sudoku_solving].row = m;
-					step[sudoku_solving++].col = n;
-				}
-			}
-		}
-		printf("%d is solved.\n",done);
+		solved += sudoku_filterout_solved(v, i, j, &step[solved]);
+//		sudoku_print(v);
 	}
 
-	return sudoku_solving;
+	return solved;
 }
 
 int main(int argc, char *argv[])
@@ -155,15 +163,15 @@ int main(int argc, char *argv[])
 #endif
 	};
 	struct sudoku_cell_t sudoku_step[81];
-	int sudoku_solving = 0;
+	int solved = 0;
 
-	sudoku_solving = sudoku_init((int*)sudoku, sudoku_step);
+	solved = sudoku_init((int*)sudoku, sudoku_step);
 	sudoku_print(sudoku);
-	printf("%d is solved\n", sudoku_solving);
+	printf("%d is solved\n", solved);
 
-	sudoku_solving = sudoku_solve(sudoku, sudoku_step, sudoku_solving);
+	solved = sudoku_solve(sudoku, sudoku_step, solved);
 
-	printf("%d solved.\n", sudoku_solving);
+	printf("%d solved.\n", solved);
 	sudoku_print(sudoku);
 	return 0;
 }
