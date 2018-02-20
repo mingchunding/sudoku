@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NOT_SOLVED(x) (x&(x-1))
+#define NOT_SOLVED(x) ((x&(x-2))>1)
 #define DBG_PRINT(i,j) 
 //printf("Calculate [%d][%d] = 0x%.3x\n",i+1,j+1,v[i][j])
 
@@ -19,7 +19,7 @@ int sudoku_init(int *v, struct sudoku_cell_t *cell)
 			v[i] = 0x3fe;
 			continue;
 		}
-		v[i] = 1<<v[i];
+		v[i] = 1<<v[i] | 1;
 		cell[t].row = i/9;
 		cell[t++].col = i%9;
 	}
@@ -37,7 +37,7 @@ int sudoku_print(int v[][9])
 		printf("|");
 		for (j=0; j<9; j++)
 		{
-			int t = v[i/3][j];
+			int t = v[i/3][j] & ~1;
 			int c = 0;
 			if (!t || NOT_SOLVED(t)) {
 				//printf(" 0");
@@ -47,8 +47,10 @@ int sudoku_print(int v[][9])
 			}
 
 			if (c) {
-				printf(" %d %d %d",c,c,c);
-				//printf(" \e[5;32m%d %d %d\e[m",c,c,c);
+				if (v[i/3][j] & 1)
+					printf(" \e[1;34m%d %d %d\e[m",c,c,c);
+				else
+					printf(" %d %d %d",c,c,c);
 			} else for (n=0; n<3; n++) {
 				c = m*3+n+1;
 				if (t & (1<<c))
