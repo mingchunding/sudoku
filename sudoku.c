@@ -126,6 +126,61 @@ int sudoku_filterout_cell(int sudoku[][9], int row, int col, struct sudoku_cell_
 	return solved;
 }
 
+int sudoku_loopup_only(int sudoku[][9], struct sudoku_cell_t *step)
+{
+	int i,j,t,n;
+	struct _group_t {
+		int repeat;
+		int row;
+		int col;
+	} times[3][9][9];
+
+	int solved = 0;
+
+	for (i=0; i<3*9*9; i++)
+		((struct _group_t*)times)[i].repeat = 0;
+
+	for (i=0; i<9; i++) {
+		for (j=0; j<9; j++) {
+			t = sudoku[i][j] & ~1;
+			if (!NOT_SOLVED(t))
+				continue;
+			for (n=0; t; n++, t>>=1) {
+				if (!(t&1))
+					continue;
+				times[0][i][n-1].repeat++;
+				times[0][i][n-1].row = i;
+				times[0][i][n-1].col = j;
+				times[1][j][n-1].repeat++;
+				times[1][j][n-1].row = i;
+				times[1][j][n-1].col = j;
+				times[2][i/3*3+j/3][n-1].repeat++;
+				times[2][i/3*3+j/3][n-1].row = i;
+				times[2][i/3*3+j/3][n-1].col = j;
+			}
+
+		}
+	}
+
+	for (n=0; n<3; n++) {
+		for (i=0; i<9; i++) {
+			for (j=0; j<9; j++) {
+				if (times[n][i][j].repeat == 1) {
+					t = 2<<j;
+					step[solved].row = times[n][i][j].row;
+					step[solved++].col = times[n][i][j].col;
+					sudoku[times[n][i][j].row][times[n][i][j].col] = t;
+				}
+			}
+		}
+
+		if (solved >0)
+			break;
+	}
+
+	return solved;
+}
+
 int sudoku_solve(int sudoku[][9], struct sudoku_cell_t *step, int solved)
 {
 	int s = 0;
@@ -142,17 +197,34 @@ int sudoku_solve(int sudoku[][9], struct sudoku_cell_t *step, int solved)
 		solved += t;
 		if (t)
 			printf("step %2d: checked [%d][%d]=%d relative cells\n", s, i+1, j+1, sudoku[i][j]);
-//		sudoku_print(sudoku);
+
+		//sudoku_print(sudoku);
+		if (s == solved-1) {
+			solved += sudoku_loopup_only(sudoku, &step[solved]);
+		}
 	}
+
 
 	return solved;
 }
 
+#define sample 2
 int main(int argc, char *argv[])
 {
 	int i,j,k,m,n;
 	int sudoku[][9] = {
-#if 1
+#if (sample==2)
+
+		{9,0,2,0,0,0,0,0,8},
+		{0,0,0,0,8,5,0,0,9},
+		{4,0,0,2,0,0,0,0,0},
+		{0,5,0,0,0,6,3,0,0},
+		{0,1,0,0,3,0,0,2,0},
+		{0,0,6,4,0,0,0,9,0},
+		{0,0,0,0,0,2,0,0,3},
+		{5,0,0,8,1,0,0,0,0},
+		{6,0,0,0,0,0,7,0,2},
+#elif (sample==1)
 		{4,0,0,0,6,5,0,0,7},
 		{1,7,0,0,0,0,0,9,0},
 		{0,0,0,0,0,4,0,8,0},
