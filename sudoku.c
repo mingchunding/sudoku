@@ -427,6 +427,7 @@ int sudoku_lookup_multi_blk(struct s_sudoku_t *sudoku, int blk)
 				v[3] = sudoku->cell[row[3]][col[3]];
 				if (!NOT_SOLVED(v[3])) continue;
 				if (num_of_one(v[1]|v[2]|v[3]) == 3)
+				       return v[1]|v[2]|v[3];
 			}
 		}
 	}
