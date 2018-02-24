@@ -376,6 +376,7 @@ int sudoku_filterout_multi(struct s_sudoku_t *sudoku)
 	int row, col, v;
 	int solved = 0;
 	struct sudoku_cell_pos_t *step = &sudoku->steps[sudoku->solved];
+	int multi = 0;
 
 	for (row=0; row<9; row++) {
 		v = sudoku_lookup_multi(sudoku, row);
@@ -386,6 +387,7 @@ int sudoku_filterout_multi(struct s_sudoku_t *sudoku)
 			if (!(sudoku->cell[row][col] & ~v))
 				continue;
 
+			multi++;
 			sudoku->cell[row][col] &= ~v;
 			if (!NOT_SOLVED(sudoku->cell[row][col])) {
 				step[solved].row = row;
@@ -396,7 +398,7 @@ int sudoku_filterout_multi(struct s_sudoku_t *sudoku)
 
 	sudoku->solved += solved;
 
-	return solved;
+	return multi;
 }
 
 int sudoku_lookup_multi_blk(struct s_sudoku_t *sudoku, int blk)
@@ -442,7 +444,7 @@ int sudoku_filterout_multi_blk(struct s_sudoku_t *sudoku)
 	struct sudoku_cell_pos_t *step = &sudoku->steps[sudoku->solved];
 	int multi = 0;
 
-	for (i=6; i<7; i++) {
+	for (i=0; i<9; i++) {
 		if ((v = sudoku_lookup_multi_blk(sudoku, i))>0) {
 			printf("multi number 0x%.3x are found in block #%d.\n", v, i);
 			for (j=0; j<9; j++) {
