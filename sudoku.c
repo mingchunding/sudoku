@@ -505,7 +505,6 @@ int sudoku_solve(struct s_sudoku_t *sudoku)
 
 int main(int argc, char *argv[])
 {
-	int i,j,k,m,n;
 	struct s_sudoku_t sudoku[] = {
 		{
 			.cell = {
@@ -560,14 +559,23 @@ int main(int argc, char *argv[])
 			}
 		}
 	};
+	int i = 1;
 
-	sudoku_init(&sudoku);
-	sudoku_print(&sudoku);
-	printf("%d is solved\n", sudoku.solved);
+	if (argc < 1) return 0;
+	if (argc > 1)
+		i = atoi(argv[1]);
 
-	sudoku_solve(&sudoku);
+	//for (i=0; i<argc; i++)
+	//	printf("argv[%d]=%s\n", i, argv[i]);
 
-	printf("%d solved.\n", sudoku.solved);
-	sudoku_print(&sudoku);
+	sudoku_init(&sudoku[i]);
+	sudoku_print(&sudoku[i]);
+	printf("%d is solved\n", sudoku[i].solved);
+
+	sudoku_solve(&sudoku[i]);
+
+	printf("%d solved.\n", sudoku[i].solved);
+	sudoku_print(&sudoku[i]);
+
 	return 0;
 }
