@@ -495,7 +495,7 @@ int sudoku_solve(struct s_sudoku_t *sudoku)
 			solved = sudoku_filterout_multi(sudoku);
 		}
 
-		if (s == sudoku->solved-1 && solved == 0) {
+		if (s == sudoku->solved-1) {
 			sudoku_filterout_multi_blk(sudoku);
 		}
 	}
