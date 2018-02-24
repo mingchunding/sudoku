@@ -256,6 +256,8 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 		if (solved > 0)
 			break;
 	}
+
+	return solved;
 #else
 	int *row[3] = {&i, &j, &m};
 	int *col[3] = {&j, &i, &k};
@@ -278,7 +280,7 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 					step[solved].row = *row[t];
 					step[solved++].col = *col[t];
 					sudoku->cell[*row[t]][*col[t]] = 2<<n;
-					break;
+					continue;
 				}
 				case 0:
 					break;
@@ -293,12 +295,12 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 						int cc;
 						for (cc = 0; cc < (i%3)*3; cc++) {
 							if (!NOT_SOLVED(sudoku->cell[*row[t]][cc])) continue;
-							multi |= (sudoku->cell[*row[t]][cc] & (2<<n));
+							multi++;
 							sudoku->cell[*row[t]][cc] &= ~(2<<n);
 						}
 						for (cc = (i%3)*3+3; cc < 9; cc++) {
 							if (!NOT_SOLVED(sudoku->cell[*row[t]][cc])) continue;
-							multi |= (sudoku->cell[*row[t]][cc] & (2<<n));
+							multi++;
 							sudoku->cell[*row[t]][cc] &= ~(2<<n);
 						}
 					} else if (num_of_one(sudoku->pos[n][1][*col[t]]) > num_of_one(s) &&
@@ -309,12 +311,12 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 						int rr;
 						for (rr = 0; rr < i/3*3; rr++) {
 							if (!NOT_SOLVED(sudoku->cell[rr][*col[t]])) continue;
-							multi |= (sudoku->cell[rr][*col[t]] & (2<<n));
+							multi++;
 							sudoku->cell[rr][*col[t]] &= ~(2<<n);
 						}
 						for (rr = i/3*3+3; rr < 9; rr++) {
 							if (!NOT_SOLVED(sudoku->cell[rr][*col[t]])) continue;
-							multi |= (sudoku->cell[rr][*col[t]] & (2<<n));
+							multi++;
 							sudoku->cell[rr][*col[t]] &= ~(2<<n);
 						}
 					}
@@ -327,9 +329,12 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 		if (solved > 0)
 			break;
 	}
-#endif
+
+	if (multi > 0)
+		printf("Clear %d more drafts.\n", multi);
 
 	return (solved > 0 ? solved : (multi ? -1 : 0));
+#endif
 }
 
 int num_of_one(int v) {
