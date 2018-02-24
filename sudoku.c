@@ -38,11 +38,6 @@ int sudoku_init(struct s_sudoku_t *sudoku)
 			v[row][col] = (1<<num) | 1;
 			cell[t].row = row;
 			cell[t++].col = col;
-
-			blk = row/3 + col%3;
-			pos[num-1][0][row] |= 1 << col;
-			pos[num-1][1][col] |= 1 << row;
-			pos[num-1][2][blk] |= 1 << blk;
 		}
 	}
 
@@ -101,13 +96,51 @@ int sudoku_print(struct s_sudoku_t *sudoku)
 	return 0;
 }
 
+int sudoku_show_locations(struct s_sudoku_t *sudoku)
+{
+	int i, j, n;
+
+	for (i=0; i<9; i++) {
+		for (n=0; n<9; n++) {
+			printf(" 0x%.3x", sudoku->pos[n][0][i]);
+		}
+		printf("\n");
+	}
+	printf("\n\n");
+
+	for (n=0; n<9; n++) {
+		for (j=0; j<9; j++) {
+			printf(" 0x%.3x", sudoku->pos[n][1][j]);
+		}
+		printf("\n");
+	}
+	printf("\n\n");
+
+	for (n=0; n<9; n++) {
+		for (j=0; j<9; j++) {
+			printf(" 0x%.3x", sudoku->pos[n][2][j]);
+		}
+		printf("\n");
+	}
+	printf("\n\n");
+	return 0;
+}
+
+
 int sudoku_filterout_cell(struct s_sudoku_t *sudoku, int row, int col)
 {
-	int i,j,k,m,n;
+	int i,j,k,m,n,blk;
 	int solved = 0;
 	int (*cell)[9] = sudoku->cell;
 	struct sudoku_cell_pos_t *step = &sudoku->steps[sudoku->solved];
 
+
+	m = sudoku->cell[row][col] & ~1;
+	for (n=0; !(m&1); n++, m>>=1);
+	blk = row/3*3+col/3;
+	sudoku->pos[n-1][0][row] &= ~(1<<col);
+	sudoku->pos[n-1][1][col] &= ~(1<<row);
+	sudoku->pos[n-1][2][blk] &= ~(1<<((row%3)*3+(col%3)));
 
 	i = row;
 	j = col;
@@ -156,9 +189,9 @@ int sudoku_filterout_cell(struct s_sudoku_t *sudoku, int row, int col)
 	return solved;
 }
 
-int sudoku_loopup_only(struct s_sudoku_t *sudoku)
+int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 {
-	int i,j,t,n;
+	int i,j,k,t,n,m,s;
 	struct _group_t {
 		int repeat;
 		int row;
@@ -168,8 +201,10 @@ int sudoku_loopup_only(struct s_sudoku_t *sudoku)
 
 	int solved = 0;
 
-	for (i=0; i<3*9*9; i++)
+	for (i=0; i<3*9*9; i++) {
 		((struct _group_t*)times)[i].repeat = 0;
+		((int*)sudoku->pos)[i] = 0;
+	}
 
 	for (i=0; i<9; i++) {
 		for (j=0; j<9; j++) {
@@ -179,20 +214,32 @@ int sudoku_loopup_only(struct s_sudoku_t *sudoku)
 			for (n=0; t; n++, t>>=1) {
 				if (!(t&1))
 					continue;
+				//calculate times of number n marked as draft in row i, col j and block k
 				times[0][i][n-1].repeat++;
 				times[0][i][n-1].row = i;
 				times[0][i][n-1].col = j;
+
 				times[1][j][n-1].repeat++;
 				times[1][j][n-1].row = i;
 				times[1][j][n-1].col = j;
-				times[2][i/3*3+j/3][n-1].repeat++;
-				times[2][i/3*3+j/3][n-1].row = i;
-				times[2][i/3*3+j/3][n-1].col = j;
+
+				k = i/3*3+j/3;
+				times[2][k][n-1].repeat++;
+				times[2][k][n-1].row = i;
+				times[2][k][n-1].col = j;
+
+				//mark number n as draft in possible locations of row, col and block
+				k = i/3*3+j/3;
+				m = (i%3)*3+(j%3);
+				sudoku->pos[n-1][0][i] |= (1<<j);
+				sudoku->pos[n-1][1][j] |= (1<<i);
+				sudoku->pos[n-1][2][k] |= (1<<m);
 			}
 
 		}
 	}
 
+#if 0
 	for (n=0; n<3; n++) {
 		for (i=0; i<9; i++) {
 			for (j=0; j<9; j++) {
@@ -209,12 +256,118 @@ int sudoku_loopup_only(struct s_sudoku_t *sudoku)
 		if (solved > 0)
 			break;
 	}
+#else
+	int *row[3] = {&i, &j, &m};
+	int *col[3] = {&j, &i, &k};
+	int multi = 0;
+	for (t=0; t<3; t++) {
+		for (i=0; i<9; i++) {
+			for (n=0; n<9; n++) {
+				int c = 0;
+				s = sudoku->pos[n][t][i];
+				for (j=-1; s; j++,s>>=1)
+					if (s&1) c++;
 
-	return solved;
+				s = sudoku->pos[n][t][i];
+				m = i/3*3 + j/3;
+				k = (i%3)*3 + j%3;
+				switch (c) {
+				case 1:
+				// exist in only one cell
+				{
+					step[solved].row = *row[t];
+					step[solved++].col = *col[t];
+					sudoku->cell[*row[t]][*col[t]] = 2<<n;
+					break;
+				}
+				case 0:
+					break;
+				default:
+					if (t<2) break;
+					if (num_of_one(sudoku->pos[n][0][*row[t]]) > num_of_one(s) &&
+							((s & 0x007) == s ||
+							(s & 0x038) == s ||
+							(s & 0x1c0) == s)) {
+
+						printf("num %d only be in %d cells in blk #%d of row %d\n", n+1, c, i, *row[t]);
+						int cc;
+						for (cc = 0; cc < (i%3)*3; cc++) {
+							if (!NOT_SOLVED(sudoku->cell[*row[t]][cc])) continue;
+							multi |= (sudoku->cell[*row[t]][cc] & (2<<n));
+							sudoku->cell[*row[t]][cc] &= ~(2<<n);
+						}
+						for (cc = (i%3)*3+3; cc < 9; cc++) {
+							if (!NOT_SOLVED(sudoku->cell[*row[t]][cc])) continue;
+							multi |= (sudoku->cell[*row[t]][cc] & (2<<n));
+							sudoku->cell[*row[t]][cc] &= ~(2<<n);
+						}
+					} else if (num_of_one(sudoku->pos[n][1][*col[t]]) > num_of_one(s) &&
+							((s & 0x049) == s ||
+							(s & 0x092) == s ||
+							(s & 0x124) == s)) {
+						printf("num %d only be in %d cells in blk #%d of col %d\n", n+1, c, i, *col[t]);
+						int rr;
+						for (rr = 0; rr < i/3*3; rr++) {
+							if (!NOT_SOLVED(sudoku->cell[rr][*col[t]])) continue;
+							multi |= (sudoku->cell[rr][*col[t]] & (2<<n));
+							sudoku->cell[rr][*col[t]] &= ~(2<<n);
+						}
+						for (rr = i/3*3+3; rr < 9; rr++) {
+							if (!NOT_SOLVED(sudoku->cell[rr][*col[t]])) continue;
+							multi |= (sudoku->cell[rr][*col[t]] & (2<<n));
+							sudoku->cell[rr][*col[t]] &= ~(2<<n);
+						}
+					}
+					break;
+				}
+			}
+		}
+
+		sudoku->solved += solved;
+		if (solved > 0)
+			break;
+	}
+#endif
+
+	return (solved > 0 ? solved : (multi ? -1 : 0));
+}
+
+int num_of_one(int v) {
+	int c;
+
+	for (c=0; v; v>>=1)
+		if (v&1) c++;
+
+	return c;
+}
+
+int sudoku_lookup_multi(struct s_sudoku_t *sudoku)
+{
+	int i,j,k,v;
+	int row = 0;
+
+	for (i=0; i<9; i++) {
+		if (!NOT_SOLVED(sudoku->cell[row][i])) continue;
+		v = sudoku->cell[row][i];
+
+		for (j=i+1; j<9; j++) {
+			if (!NOT_SOLVED(sudoku->cell[row][j])) continue;
+			if (num_of_one(v|sudoku->cell[row][j]) == 2)
+			       return v|sudoku->cell[row][j];
+			v |= sudoku->cell[row][j];
+
+			for (k=j+1; k<9; k++) {
+				if (!NOT_SOLVED(sudoku->cell[row][k])) continue;
+				if (num_of_one(v|sudoku->cell[row][k]) == 3)
+				       return v|sudoku->cell[row][j];
+			}
+		}
+	}
+
+	return 0;
 }
 
 int sudoku_solve(struct s_sudoku_t *sudoku)
-//int sudoku[][9], struct sudoku_cell_pos_t *step, int solved)
 {
 	int s = 0;
 	int t = 0;
@@ -231,7 +384,8 @@ int sudoku_solve(struct s_sudoku_t *sudoku)
 
 		//sudoku_print(sudoku);
 		if (s == sudoku->solved-1) {
-			sudoku_loopup_only(sudoku);
+			while (0 > sudoku_lookup_only(sudoku))
+			       printf("loop lookup only\n");
 		}
 	}
 
