@@ -5,6 +5,11 @@
 #define DBG_PRINT(i,j) 
 //printf("Calculate [%d][%d] = 0x%.3x\n",i+1,j+1,v[i][j])
 
+#define SUDOKU_METHOD_SCAN_DRAFT_FOR_ONLY_ONE 1
+#define SUDOKU_METHOD_SCAN_DRAFT_FOR_MULTIPLE 2
+#define SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_ROW 4
+#define SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_BLK 8
+
 struct sudoku_cell_pos_t {
 	int row;
 	int col;
@@ -189,7 +194,7 @@ int sudoku_filterout_cell(struct s_sudoku_t *sudoku, int row, int col)
 	return solved;
 }
 
-int sudoku_lookup_only(struct s_sudoku_t *sudoku)
+int sudoku_lookup_only(struct s_sudoku_t *sudoku, int rules)
 {
 	int i,j,k,t,n,m,s;
 	struct _group_t {
@@ -286,6 +291,7 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 					break;
 				default:
 					if (t<2) break;
+					if (~rules & SUDOKU_METHOD_SCAN_DRAFT_FOR_MULTIPLE) break;
 					if (num_of_one(sudoku->pos[n][0][*row[t]]) > num_of_one(s) &&
 							((s & 0x007) == s ||
 							(s & 0x038) == s ||
@@ -331,7 +337,7 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku)
 	}
 
 	if (multi > 0)
-		printf("Clear %d more drafts.\n", multi);
+		printf("Clear %d more drafts for some numbers are only in blocks.\n", multi);
 
 	return (solved > 0 ? solved : (multi ? -1 : 0));
 #endif
@@ -381,6 +387,7 @@ int sudoku_filterout_multi(struct s_sudoku_t *sudoku)
 	for (row=0; row<9; row++) {
 		v = sudoku_lookup_multi(sudoku, row);
 		if (!v) continue;
+		printf("multi number 0x%.3x are found in row #%d.\n", v, row);
 
 		for (col=0; col<9; col++) {
 			if (!NOT_SOLVED(sudoku->cell[row][col])) continue;
@@ -445,21 +452,22 @@ int sudoku_filterout_multi_blk(struct s_sudoku_t *sudoku)
 	int multi = 0;
 
 	for (i=0; i<9; i++) {
-		if ((v = sudoku_lookup_multi_blk(sudoku, i))>0) {
-			printf("multi number 0x%.3x are found in block #%d.\n", v, i);
-			for (j=0; j<9; j++) {
-				row = i/3*3 + j/3;
-				col = (i%3)*3 + (j%3);
-				if (!NOT_SOLVED(sudoku->cell[row][col])) continue;
-				if (!(sudoku->cell[row][col] & ~v))
-					continue;
+		v = sudoku_lookup_multi_blk(sudoku, i);
+		if (!v) continue;
 
-				sudoku->cell[row][col] &= ~v;
-				multi++;
-				if (!NOT_SOLVED(sudoku->cell[row][col])) {
-					step[solved].row = row;
-					step[solved++].col = col;
-				}
+		printf("multi number 0x%.3x are found in block #%d.\n", v, i);
+		for (j=0; j<9; j++) {
+			row = i/3*3 + j/3;
+			col = (i%3)*3 + (j%3);
+			if (!NOT_SOLVED(sudoku->cell[row][col])) continue;
+			if (!(sudoku->cell[row][col] & ~v))
+				continue;
+
+			sudoku->cell[row][col] &= ~v;
+			multi++;
+			if (!NOT_SOLVED(sudoku->cell[row][col])) {
+				step[solved].row = row;
+				step[solved++].col = col;
 			}
 		}
 	}
@@ -469,11 +477,10 @@ int sudoku_filterout_multi_blk(struct s_sudoku_t *sudoku)
 	return multi;
 }
 
-int sudoku_solve(struct s_sudoku_t *sudoku)
+int sudoku_solve(struct s_sudoku_t *sudoku, int rules)
 {
 	int s = 0;
 	int t = 0;
-	int solved = 0;
 
 	for (s=0; s < sudoku->solved && sudoku->solved<81; s++) {
 		int i = sudoku->steps[s].row;
@@ -486,16 +493,16 @@ int sudoku_solve(struct s_sudoku_t *sudoku)
 			printf("step %2d: checked [%d][%d]=%d relative cells\n", s, i+1, j+1, sudoku->cell[i][j]);
 
 		//sudoku_print(sudoku);
-		if (s == sudoku->solved-1) {
-			while (0 > sudoku_lookup_only(sudoku))
+		if (s == sudoku->solved-1 && (rules & SUDOKU_METHOD_SCAN_DRAFT_FOR_ONLY_ONE)) {
+			while (0 > sudoku_lookup_only(sudoku, rules))
 			       printf("loop lookup only\n");
 		}
 
-		if (s == sudoku->solved-1) {
-			solved = sudoku_filterout_multi(sudoku);
+		if (s == sudoku->solved-1 && (rules & SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_ROW)) {
+			sudoku_filterout_multi(sudoku);
 		}
 
-		if (s == sudoku->solved-1) {
+		if (s == sudoku->solved-1 && (rules & SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_BLK)) {
 			sudoku_filterout_multi_blk(sudoku);
 		}
 	}
@@ -508,28 +515,15 @@ int main(int argc, char *argv[])
 	struct s_sudoku_t sudoku[] = {
 		{
 			.cell = {
-		{0,0,0,0,3,4,0,0,0},
-		{4,0,2,0,0,0,3,1,0},
-		{0,0,0,1,0,0,5,0,0},
-		{8,0,0,6,0,0,0,3,0},
-		{2,0,0,0,1,0,0,0,9},
-		{0,3,0,0,0,7,0,0,2},
-		{0,0,3,0,0,6,0,0,0},
-		{0,7,4,0,0,0,2,0,8},
-		{0,0,0,8,9,0,0,0,0}
-			}
-		},
-		{
-			.cell = {
-		{9,0,2,0,0,0,0,0,8},
-		{0,0,0,0,8,5,0,0,9},
-		{4,0,0,2,0,0,0,0,0},
-		{0,5,0,0,0,6,3,0,0},
-		{0,1,0,0,3,0,0,2,0},
-		{0,0,6,4,0,0,0,9,0},
-		{0,0,0,0,0,2,0,0,3},
-		{5,0,0,8,1,0,0,0,0},
-		{6,0,0,0,0,0,7,0,2}
+		{0,8,4,6,0,0,0,0,0},
+		{5,3,0,2,0,4,0,9,0},
+		{6,0,0,0,9,0,0,0,4},
+		{2,9,0,0,3,0,0,6,8},
+		{0,0,3,0,0,0,2,0,0},
+		{8,7,0,0,5,0,0,1,9},
+		{4,0,0,0,7,0,0,0,3},
+		{0,5,0,3,0,8,0,4,1},
+		{0,0,0,0,0,5,8,2,0}
 			}
 		},
 		{
@@ -547,32 +541,47 @@ int main(int argc, char *argv[])
 		},
 		{
 			.cell = {
-		{0,8,4,6,0,0,0,0,0},
-		{5,3,0,2,0,4,0,9,0},
-		{6,0,0,0,9,0,0,0,4},
-		{2,9,0,0,3,0,0,6,8},
-		{0,0,3,0,0,0,2,0,0},
-		{8,7,0,0,5,0,0,1,9},
-		{4,0,0,0,7,0,0,0,3},
-		{0,5,0,3,0,8,0,4,1},
-		{0,0,0,0,0,5,8,2,0}
+		{9,0,2,0,0,0,0,0,8},
+		{0,0,0,0,8,5,0,0,9},
+		{4,0,0,2,0,0,0,0,0},
+		{0,5,0,0,0,6,3,0,0},
+		{0,1,0,0,3,0,0,2,0},
+		{0,0,6,4,0,0,0,9,0},
+		{0,0,0,0,0,2,0,0,3},
+		{5,0,0,8,1,0,0,0,0},
+		{6,0,0,0,0,0,7,0,2}
 			}
-		}
+		},
+		{
+			.cell = {
+		{0,0,0,0,3,4,0,0,0},
+		{4,0,2,0,0,0,3,1,0},
+		{0,0,0,1,0,0,5,0,0},
+		{8,0,0,6,0,0,0,3,0},
+		{2,0,0,0,1,0,0,0,9},
+		{0,3,0,0,0,7,0,0,2},
+		{0,0,3,0,0,6,0,0,0},
+		{0,7,4,0,0,0,2,0,8},
+		{0,0,0,8,9,0,0,0,0}
+			}
+		},
 	};
 	int i = 1;
+	int rules = 0;
 
-	if (argc < 1) return 0;
 	if (argc > 1)
 		i = atoi(argv[1]);
+	if (argc > 2)
+		rules = atoi(argv[2]);
 
 	//for (i=0; i<argc; i++)
 	//	printf("argv[%d]=%s\n", i, argv[i]);
 
 	sudoku_init(&sudoku[i]);
-	sudoku_print(&sudoku[i]);
+	//sudoku_print(&sudoku[i]);
 	printf("%d is solved\n", sudoku[i].solved);
 
-	sudoku_solve(&sudoku[i]);
+	sudoku_solve(&sudoku[i], rules);
 
 	printf("%d solved.\n", sudoku[i].solved);
 	sudoku_print(&sudoku[i]);
