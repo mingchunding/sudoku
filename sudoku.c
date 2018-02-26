@@ -270,6 +270,15 @@ void sudoku_clear_loc_by_cell(struct s_sudoku_t *sudoku, int row, int col, int n
 	sudoku->pos[n-1][2][blk] &= ~(1<<idx);
 }
 
+int num_of_one(int v) {
+	int c;
+
+	for (c=0; v; v>>=1)
+		if (v&1) c++;
+
+	return c;
+}
+
 int sudoku_lookup_only(struct s_sudoku_t *sudoku, int rules)
 {
 	int i,j,k,t,n,m,s;
@@ -365,15 +374,6 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku, int rules)
 	}
 
 	return multi;
-}
-
-int num_of_one(int v) {
-	int c;
-
-	for (c=0; v; v>>=1)
-		if (v&1) c++;
-
-	return c;
 }
 
 int sudoku_lookup_multi(struct s_sudoku_t *sudoku, int row)
