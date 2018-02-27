@@ -766,7 +766,7 @@ int main(int argc, char *argv[])
 	//	printf("argv[%d]=%s\n", i, argv[i]);
 
 	sudoku_init(&sudoku[i]);
-	//sudoku_print(&sudoku[i]);
+	sudoku_print(&sudoku[i]);
 	printf("%d is solved\n", sudoku[i].solved);
 
 	sudoku_solve(&sudoku[i], rules);
