@@ -457,6 +457,76 @@ int sudoku_filterout_multi_in_row(struct s_sudoku_t *sudoku)
 	return multi;
 }
 
+int sudoku_lookup_multi_in_col(struct s_sudoku_t *sudoku, int col)
+{
+	int i,j,k,l,v[4];
+
+	for (i=0; i<9; i++) {
+		v[0] = sudoku->cell[i][col];
+		if (!NOT_SOLVED(v[0])) continue;
+
+		for (j=i+1; j<9; j++) {
+			v[1] = sudoku->cell[j][col];
+			if (!NOT_SOLVED(v[1])) continue;
+			if (num_of_one(v[0]|v[1]) == 2)
+			       return v[0]|v[1];
+
+			for (k=j+1; k<9; k++) {
+				v[2] = sudoku->cell[k][col];
+				if (!NOT_SOLVED(v[2])) continue;
+				if (num_of_one(v[0]|v[1]|v[2]) == 3)
+				       return v[0]|v[1]|v[2];
+
+				for (l=k+1; l<9; l++) {
+					v[3] = sudoku->cell[l][col];
+					if (!NOT_SOLVED(v[3])) continue;
+					if (num_of_one(v[0]|v[1]|v[2]|v[3]) == 4)
+					       return v[0]|v[1]|v[2]|v[3];
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+int sudoku_filterout_multi_in_col(struct s_sudoku_t *sudoku)
+{
+	int row, col, v;
+	int solved = 0;
+	struct sudoku_cell_pos_t *step = &sudoku->steps[sudoku->solved];
+	int multi = 0, a;
+
+	for (col=0; col<9; col++) {
+		v = sudoku_lookup_multi_in_col(sudoku, col);
+		if (!v) continue;
+
+		a = 0;
+		for (row=0; row<9; row++) {
+			if (!NOT_SOLVED(sudoku->cell[row][col])) continue;
+			if (!(sudoku->cell[row][col] & ~v))
+				continue;
+
+			if (!(sudoku->cell[row][col] & v))
+				continue;
+
+			a++;
+			sudoku->cell[row][col] &= ~v;
+			if (!NOT_SOLVED(sudoku->cell[row][col])) {
+				step[solved].row = row;
+				step[solved++].col = col;
+			}
+		}
+		multi += a;
+		if (a > 0)
+			printf("multi number 0x%.3x are found in col #%d.\n", v, col);
+	}
+
+	sudoku->solved += solved;
+
+	return multi;
+}
+
 int sudoku_lookup_multi_in_blk(struct s_sudoku_t *sudoku, int blk)
 {
 	int i,j,k,l;
@@ -559,15 +629,20 @@ int sudoku_solve(struct s_sudoku_t *sudoku, int rules)
 
 		//sudoku_print(sudoku);
 		do {
-			if (s+1 == sudoku->solved && (rules & SUDOKU_METHOD_SCAN_DRAFT_FOR_ONLY_ONE)) {
-				while (0 < sudoku_lookup_only(sudoku, rules))
-				       printf("loop lookup only\n");
+			while (s+1 == sudoku->solved &&
+					(rules & SUDOKU_METHOD_SCAN_DRAFT_FOR_ONLY_ONE) &&
+					0 < sudoku_lookup_only(sudoku, rules)) {
+				       //printf("loop lookup only\n");
 			}
 
 			if (s+1 == sudoku->solved && (rules & SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_ROW)) {
 				multi = sudoku_filterout_multi_in_row(sudoku);
 			} else
 				multi = 0;
+
+			if (s+1 == sudoku->solved && (rules & SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_ROW)) {
+				multi += sudoku_filterout_multi_in_col(sudoku);
+			}
 
 			if (s+1 == sudoku->solved && (rules & SUDOKU_METHOD_SCAN_MULTI_CELLS_IN_BLK)) {
 				multi += sudoku_filterout_multi_in_blk(sudoku);
