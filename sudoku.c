@@ -132,6 +132,15 @@ int sudoku_show_locations(struct s_sudoku_t *sudoku)
 	return 0;
 }
 
+void sudoku_clear_loc_by_cell(struct s_sudoku_t *sudoku, int row, int col, int n)
+{
+	int blk = row/3*3 + col/3;
+	int idx = (row%3)*3 + (col%3);
+
+	sudoku->pos[n][0][row] &= ~(1<<col);
+	sudoku->pos[n][1][col] &= ~(1<<row);
+	sudoku->pos[n][2][blk] &= ~(1<<idx);
+}
 
 int sudoku_filterout_cell(struct s_sudoku_t *sudoku, int row, int col)
 {
@@ -143,10 +152,7 @@ int sudoku_filterout_cell(struct s_sudoku_t *sudoku, int row, int col)
 
 	m = sudoku->cell[row][col] & ~1;
 	for (n=0; !(m&1); n++, m>>=1);
-	blk = row/3*3+col/3;
-	sudoku->pos[n-1][0][row] &= ~(1<<col);
-	sudoku->pos[n-1][1][col] &= ~(1<<row);
-	sudoku->pos[n-1][2][blk] &= ~(1<<((row%3)*3+(col%3)));
+	sudoku_clear_loc_by_cell(sudoku, row, col, n-1);
 
 	i = row;
 	j = col;
@@ -247,16 +253,6 @@ int sudoku_clear_drafts_in_row_by_block(struct s_sudoku_t *sudoku, int blk, int 
 	return multi;
 }
 
-void sudoku_clear_loc_by_cell(struct s_sudoku_t *sudoku, int row, int col, int n)
-{
-	int blk = row/3*3 + col/3;
-	int idx = (row%3)*3 + (col%3);
-
-	sudoku->pos[n][0][row] &= ~(1<<col);
-	sudoku->pos[n][1][col] &= ~(1<<row);
-	sudoku->pos[n][2][blk] &= ~(1<<idx);
-}
-
 int num_of_one(int v) {
 	int c;
 
@@ -308,7 +304,7 @@ int sudoku_lookup_only(struct s_sudoku_t *sudoku, int rules)
 
 				s = sudoku->pos[n][t][i];
 				m = i/3*3 + j/3;
-				k = (i%3)*3 + j%3;
+				k = i%3*3 + j%3;
 				switch (c) {
 				case 1:
 				{
@@ -377,13 +373,11 @@ int sudoku_lookup_multi_in_row(struct s_sudoku_t *sudoku, int row)
 		if (NOT_SOLVED(sudoku->cell[row][i]))
 			m++;
 	}
-
 	if (m < 3) return 0;
 
 	for (i=0; i<9; i++) {
 		v[0] = sudoku->cell[row][i];
 		if (!NOT_SOLVED(v[0])) continue;
-
 		for (j=i+1; j<9; j++) {
 			CHECK_MULTI_IN_ROW(2, j);
 			for (k=j+1; k<9; k++) {
@@ -454,14 +448,11 @@ int sudoku_lookup_multi_in_col(struct s_sudoku_t *sudoku, int col)
 		if (NOT_SOLVED(sudoku->cell[i][col]))
 			m++;
 	}
-
 	if (m < 3) return 0;
-
 
 	for (i=0; i<9; i++) {
 		v[0] = sudoku->cell[i][col];
 		if (!NOT_SOLVED(v[0])) continue;
-
 		for (j=i+1; j<9; j++) {
 			CHECK_MULTI_IN_COL(2, j);
 			for (k=j+1; k<9; k++) {
@@ -538,7 +529,6 @@ int sudoku_lookup_multi_in_blk(struct s_sudoku_t *sudoku, int blk)
 		if (NOT_SOLVED(sudoku->cell[row[0]+i/3][col[0]+i%3]))
 			m++;
 	}
-
 	if (m < 3) return 0;
 
 	for (i=0; i<9; i++) {
@@ -546,7 +536,6 @@ int sudoku_lookup_multi_in_blk(struct s_sudoku_t *sudoku, int blk)
 		col[1] = col[0] + i%3;
 		v[0] = sudoku->cell[row[1]][col[1]];
 		if (!NOT_SOLVED(v[0])) continue;
-
 		for (j=i+1; j<9; j++) {
 			CHECK_MULTI_IN_BLK(2, j);
 			for (k=j+1; k<9; k++) {
@@ -575,7 +564,7 @@ int sudoku_filterout_multi_in_blk(struct s_sudoku_t *sudoku)
 		a = 0;
 		for (j=0; j<9; j++) {
 			row = i/3*3 + j/3;
-			col = (i%3)*3 + (j%3);
+			col = i%3*3 + j%3;
 			if (!NOT_SOLVED(sudoku->cell[row][col])) continue;
 			if (!(sudoku->cell[row][col] & ~v))
 				continue;
@@ -606,7 +595,7 @@ int sudoku_solve(struct s_sudoku_t *sudoku, int rules)
 	int t = 0;
 	int multi = 0;
 
-	for (s=0; s < sudoku->solved && sudoku->solved<81; s++) {
+	for (s=0; s<sudoku->solved && sudoku->solved<81; s++) {
 		int i = sudoku->steps[s].row;
 		int j = sudoku->steps[s].col;
 		if (NOT_SOLVED(sudoku->cell[i][j])) {
@@ -693,7 +682,7 @@ int main(int argc, char *argv[])
 		{2,0,0,0,1,0,0,0,9},
 		{0,3,0,0,0,7,0,0,2},
 		{0,0,3,0,0,6,0,0,0},
-		{0,7,4,0,0,0,2,0,8},
+		{0,7,4,0,0,0,6,0,8},
 		{0,0,0,8,9,0,0,0,0}
 			}
 		},
